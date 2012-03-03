@@ -1,0 +1,426 @@
+;;; -*- Mode: Lisp; Package: EDITOR -*-
+;;=================== キーバインド ==============================================
+(global-set-key #\C-/ 'undo)
+(global-set-key #\C-. 'redo)
+(global-set-key #\M-% 'query-replace)                 ;正規表現で置換
+(global-set-key #\C-7 'selection-whole-buffer)        ;すべて選択
+(global-set-key #\C-8 'copy-selection-to-clipboard)
+(global-set-key #\C-9 'paste-from-clipboard)
+(global-set-key #\C-0 'kill-selection-to-clipboard)
+(global-set-key #\M-C-P 'next-buffer)                 ;次のバッファへ
+(global-set-key #\M-C-N 'previous-buffer)                ;前のバッファへ
+(global-set-key #\C-\\ 'toggle-ime)
+(global-set-key '(#\C-x #\r #\i) 'string-rectangle)   ;矩形領域に文字列を挿入
+(global-set-key '(#\C-x #\r #\d) 'delete-rectangle)   ;        の文字列を削除
+(global-set-key '(#\C-x #\r #\k) 'kill-rectangle)     ;        の文字列をkill-ringに追加
+(global-set-key '(#\C-x #\r #\c) 'copy-rectangle)     ;        の文字列をコピー
+(global-set-key '(#\C-x #\r #\y) 'yank-rectangle)     ;        kill-ringから貼り付け
+(global-set-key #\C-\, 'mark-whole-buffer)            ;buffer 全体をマーク
+(define-key ctl-x-map #\C-w 'emacs-write-file)        ;バッファの名前もリネーム
+(global-set-key '(#\C-x #\C-n) 'other-window)
+(global-set-key '(#\C-x #\C-p) #'(lambda () (interactive) (other-window -1))) 
+(global-set-key #\M-. 'jump-tag)
+(global-set-key #\M-* 'back-tag-jump)
+(global-set-key #\M-\| 'filter-region)
+(global-set-key '(#\C-x #\3) 'split-window-vertically)
+
+;;===============================================================================
+
+;;================ その他設定===================================================
+;; メニューを見せたり消したり
+(let ((toggle-app-menu *app-menu*))
+  (defun toggle-app-menu ()
+        (interactive)
+        (set-menu (setq toggle-app-menu
+			(unless toggle-app-menu *app-menu*)))))
+
+;;デフォルトはメニューを消す
+(add-hook '*post-startup-hook*
+	  #'(lambda ()
+	      (set-menu nil)))
+
+(setq *find-other-file-requires-file-name* t)
+
+;;; minibuffer の IME を最初から OFF にする。
+(defvar *start-minibuffer-toggle-ime* nil)
+
+(defun enter-minibuffer-ime-off (buf his)
+  (when (get-ime-mode)
+    (toggle-ime) (setq *start-minibuffer-toggle-ime* t)))
+
+(defun exit-minibuffer-ime-return (buf his)
+  (when *start-minibuffer-toggle-ime*
+    (toggle-ime) (setq *start-minibuffer-toggle-ime* nil)))
+
+(add-hook '*enter-minibuffer-hook* 'enter-minibuffer-ime-off)
+(add-hook '*exit-minibuffer-hook* 'exit-minibuffer-ime-return)
+
+
+;インクリメンタルサーチ
+(require "isearch")
+
+(require "addref")
+
+;ステータスバーにアスキーコード／ユニコード／行番号／桁位置とか表示
+(setq *status-bar-format* "cupT")
+
+;;; 補完ワードポップアップ
+(require "dabbrev")
+(global-set-key #\M-\/ 'dabbrev-popup)
+(setq *popup-completion-list-default* :always)
+;(setq *minibuffer-popup-completion-list* :never)
+
+;;py-mode
+(load-library "py-mode")
+(push '("\\.py$" . py-mode) *auto-mode-alist*)
+
+(require "scala-mode")
+(push '("\\.scala$" . ed::scala-mode) *auto-mode-alist*)
+
+;
+;;c-modeのインデント設定
+(setf c-indent-level 4)
+(setf c-continued-statement-offset 4)
+(setf c-brace-offset 0)
+(setf c-label-offset -2)
+(push '("\\.y$" . c-mode) *auto-mode-alist*)
+
+;;c++-modeのインデント設定と拡張子
+(setf c++-indent-level 4)
+(setf c++-continued-statement-offset 4)
+(setf c++-brace-offset -4)
+;(setf c-label-offset 4)
+(push '("\\.cpp$" . c++-mode) *auto-mode-alist*)
+(push '("\\.js$" . c++-mode) *auto-mode-alist*)
+
+;;C#-mode
+(setf csharp-indent-level 4)
+(setf csharp-continued-statement-offset 4)
+(setf csharp-brace-offset -4)
+
+;;java-modeのインデント設定
+(setf java-indent-level 4)
+(setf java-comment-indent 2)
+;(setf java-brace-offset 2)
+(setf java-label-offset -2)
+(setf java-continued-statement-offset 4)
+;;なぜかinterfaceがmake-tagsで拾えないので・・・
+(setf ed::*scan-javafunc-class-regexp*
+	  (compile-regexp "\\(^\\|[ \t]\\)\
+\\(\\(abstract\\|public\\|final\\)[ \t\n\f]+\\)*\
+\\(?:class\\|interface\\)[ \t\r\n\f]+\\([A-Za-z_][A-Za-z0-9_]*\\)\\|\\(/[/*]\\)\\|\\(['\"]\\)"))
+
+;;; css-enhance
+
+; library
+(load-library "css-mode")
+(defvar *css-indent-level* 2)
+(defvar *css-continued-statement-offset* 0)
+(defvar *css-brace-offset* -4)
+(defvar *css-brace-imaginary-offset* 0)
+(defvar *css-argdecl-indent* 0)
+(defvar *css-label-offset* 0)
+(define-key *css-mode-map* #\{ 'c-electric-insert)
+(define-key *css-mode-map* #\: 'c-electric-insert)
+(define-key *css-mode-map* #\} 'c-electric-close)
+;(define-key *css-mode-map* #\C-h 'backward-delete-char-untabify-or-selection)
+(define-key *css-mode-map* #\TAB 'c-indent-line)
+(define-key *css-mode-map* #\C-M-q 'indent-sexp)
+(define-key *css-mode-map* #\RET 'c-newline-and-indent)
+(define-key *css-mode-map* #\C-. 'ed::css-completion)
+
+; function for hook
+(defun css-enhance ()
+  ;; indent command
+  (make-local-variable 'mode-specific-indent-command)
+  (make-local-variable 'c-comment-indent-variable)
+  (setq c-comment-indent-variable 'c-comment-indent)
+  (setq mode-specific-indent-command 'c-indent-line)
+  ; indent
+  (make-local-variable 'c-indent-level)
+  (make-local-variable 'c-continued-statement-offset)
+  (make-local-variable 'c-brace-offset)
+  (make-local-variable 'c-brace-imaginary-offset)
+  (make-local-variable 'c-argdecl-indent)
+  (make-local-variable 'c-label-offset)
+  (setq c-indent-level *css-indent-level*)
+  (setq c-continued-statement-offset *css-continued-statement-offset*)
+  (setq c-brace-offset *css-brace-offset*)
+  (setq c-brace-imaginary-offset *css-brace-imaginary-offset*)
+  (setq c-argdecl-indent *css-argdecl-indent*)
+  (setq c-label-offset *css-label-offset*)
+  ; comment
+  (setq comment-indent-function 'c-comment-indent)
+  (setq comment-start "/* " comment-end " */")
+  (setq comment-start-skip "/\\(\\*+\\|/\\)[ \t]*"))
+; hook
+(add-hook '*css-mode-hook* 'css-enhance)
+
+
+;;lispモードの色づけ
+(defun lisp-keyword-definition ()
+  (load-library "LispKeyword")
+  (set-lisp-keyword-definition-file)
+)
+(add-hook 'ed::*lisp-mode-hook* 'lisp-keyword-definition)
+(add-hook 'ed::*lisp-interaction-mode-hook* 'lisp-keyword-definition)
+(push '("\\.el$" . lisp-mode) *auto-mode-alist*)
+(push '("\\.lisp$" . lisp-mode) *auto-mode-alist*)
+
+;;clispをlisp interaction modeみたいに
+(require "clisp-mode")
+
+(require "gauche-mode")
+(pushnew '("\\.scm$" . gauche-mode) *auto-mode-alist* :key #'car)
+
+;;一時的にインデント制御したいとき
+(defun set-indent-hook (sym &optional (arg 1))
+  (interactive "Ssymbol: \np")
+  (setf (get sym 'ed::lisp-indent-hook) arg))
+
+;;↑のインデント制御を解除
+(defun unset-indent-hook (sym)
+  (interactive "Ssymbol: ")
+  (set-indent-hook sym nil))
+
+
+;;保存確認するようにする。ちゅーか*scratch*用
+(add-hook '*lisp-interaction-mode-hook* #'(lambda () (setq need-not-save nil)))
+
+;;拡張子el、lispのファイルもタグファイル作成時のターゲットとする
+(let ((lisp-lst (assoc 'ed::lisp-maketags *maketags-list*)))
+  (when lisp-lst
+	(nconc lisp-lst '("*.el" "*.lisp"))))
+
+(byte-recompile-directory "D:/dev/tools/xyzzy/site-lisp/util/" nil)
+(load-library "util/base-util")
+(load-library "util/common-macros")
+(load-library "util/anaphoric-macros")
+(load-library "util/reader-macros")
+(load-library "util/myindent")
+(load-library "util/myutil")
+(load-library "util/timeutil")
+(load-library "util/assertion")
+(load-library "util/debug")
+(load-library "util/gauche-compat")
+(global-set-key #\M-k 'kill-line-backward)
+(global-set-key '(#\C-x #\m #\i) 'insert-string-to-bol)
+(global-set-key '(#\C-x #\m #\d) 'delete-string-from-bol)
+(global-set-key '#\C-F10 'toggle-maximize-window)
+(define-key filer-keymap #\M-E 'my-filer-run-console)
+(define-key filer-keymap #\F12 'my-filer-get-path)
+
+(undefine-key filer-keymap #\\)
+
+;change-eol-codeで変更フラグをonに
+(defun change-eol-code2 (&optional arg)
+  (interactive "p")
+  (change-eol-code arg)
+  (set-buffer-modified-p t))
+
+
+;;------------------------------------------------------------------------<<
+
+;;infoモードをロード
+(load-library "info")
+
+
+;;migemoの設定
+(require "migemo")
+(setf *migemo-dict-file* "C:/usr/tools/xyzzy/etc/migemo-dict")
+(migemo-toggle t)
+
+;;ruby-modeの設定
+(load-library "ruby-mode")
+(push '("\\.rb$" . ruby-mode) *auto-mode-alist*)
+
+;;Shellモード拡張
+(load-library "shell3")
+(defun myshell ()
+  (interactive)
+  (let ((shell-name))
+    (setf shell-name (read-string "which shell? "))
+    (cond ((string-equal shell-name "cmd")
+	   (setf *eshell* "cmd.exe")
+	   (shell))
+	  ((string-equal shell-name "bash")
+	   (setf *eshell* "bash -i")
+	   (shell))
+	  (t
+	   (message "error shell name")))))
+
+
+;;xml-mode
+(require "xml-mode")
+(use-package 'xml)
+(pushnew '("\\.\\(dtd\\|xml\\|xsl\\|svg\\|fo\\|xi\\)" . xml-mode) *auto-mode-alist* :test 'equal)
+
+;;html+-mode
+(export 'ed::html+-mode "ed")
+;(autoload 'html+-mode "html+-mode" t)
+(pushnew '("\\.html?$" . html+-mode) *auto-mode-alist* :test 'equal)
+
+;;netinstaller
+(require "ni/setup")
+;;更新時の文字色を変更
+(setq netinst::*attribute-app-updated* '(:foreground 6))
+
+;; 自動設定を利用する
+(ni-autoload)
+;; PROXYを通す場合
+;(setq ni::*http-proxy-host* "proxy.host")  ; PROXY のホスト
+;(setq ni::*http-proxy-port* 8080)          ; PROXY のポート
+
+(autoload 'cftp "cftp" t)
+;ローカルのデフォルトのディレクトリ
+(setq *cftp-default-directory* "j:/tools/xyzzy")
+;Anonymous FTP サーバー用パスワード
+(setq *cftp-anonymous-password* "anonymous")
+
+(load-library "ldoc")
+(turn-on-ldoc)
+(defun ed::ldoc-func-message (symbol)
+  "Print name and arguments of function bound to SYMBOL."
+  (message (concat (format nil "~S" symbol)
+                   " "
+                   (format nil "~:@(~A~): ~A"
+                           (ed::ldoc-func-get-args symbol)
+                           (or (car (split-string (documentation symbol 'function) #\LFD))
+                               "not documented")))))
+
+
+;;エラージャンプ用の追加正規表現
+;; (regexp file-name-register-index line-number-register-index)
+(defun add-error-regexp (regexp-lst)
+  (unless (atom regexp-lst)
+    (setq *error-regexp-list*
+	  (cons (car regexp-lst) *error-regexp-list*))
+    (add-error-regexp (cdr regexp-lst))))
+
+(add-error-regexp
+ (list
+  ;cscript
+  (list (compile-regexp "^.:\\(\\\\[^(\\\\]+\\)*\\\\\\([^(\\\\]+\\)(\\([0-9]+\\), \\([0-9]+\\)).*$") 2 3)
+  ;C#
+  (list (compile-regexp "^\\([^(]*\\)(\\([0-9]+\\),[0-9]+):.*$") 1 2)))
+  
+
+;;calc拡張
+(add-hook 'ed::*calc-mode-hook*
+	  #'(lambda()
+	      (require "calc-ext")))
+
+(load-library "diff-region")
+(setq *diff-region-ignore-buffer-regexp*
+      (cons "Debug Output" (cons "stacktrace" *diff-region-ignore-buffer-regexp*)))
+      
+	    
+;;==== DEBUG ====
+;; トレース機能を有効にする
+;;(defun make-my-trace-buf ()
+;;  (interactive)
+;;  (save-excursion
+;;	(setq *stack-trace-buf* (create-new-buffer "*stacktrace*"))
+;;	(set-buffer *stack-trace-buf*)
+;;	(make-local-variable 'need-not-save)
+;;	(setq need-not-save t)
+;;	(setq *error-output* (make-buffer-stream *stack-trace-buf*))
+;;  )
+;;  (setq si:*trace-on-error* t)
+;;)
+;;  
+;;(export '(make-my-trace-buf))
+;;
+;; ;; デバッグ用トレース
+;; (when (fboundp 'user::make-my-trace-buf)
+;;   (pushnew 'user::make-my-trace-buf  *init-app-menus-hook*))
+;; 
+;; (defvar debug-trace-count 0)
+;; (defun debug-print (db-string &optional element1 element2)
+;;   (let ((buf (selected-buffer)))
+;;     (save-excursion
+;;       (save-window-excursion
+;;	 (switch-to-buffer "*Debug Output*")
+;;	 (insert (format nil "~5D: ~A ~A\t~A ~A ~A\n" debug-trace-count buf
+;;			 (point)
+;; 					db-string element1 element2))
+;;	 (setq debug-trace-count (1+ debug-trace-count))))
+;;     (set-buffer buf)))
+;; ;usage: (debug-print "<hogehoge start> " arg1 arg2)
+
+;browser.lの設定
+(load-library "browser")
+(global-set-key '(#\C-x #\C-d #\n) 'navigate)
+
+;;================  ファイラの設定 =============================================
+;;キーバインド
+(define-key filer-keymap '#\F9 'filer-reload)
+(define-key filer-keymap '#\O 'filer-create-archive)
+(define-key filer-keymap '#\C-q 'filer-cancel)
+
+;; ファイラーのデフォルトマスク設定を「全てのファイル」に
+(setq *filer-primary-file-mask* '("*"))
+(setq *filer-secondary-file-mask* '("*"))
+
+;; 削除したときはごみ箱へ
+(setq *filer-use-recycle-bin* t)
+
+;;ファイラのディレクトリ設定
+(setq *filer-directories*
+      (list
+       (cons "[xyzzy]"           (si:system-root))
+       '("[programing]"        . "f:/prog")
+       (cons "[xyzzy/lisp]" (concat (si:system-root) "lisp"))
+       '("[Program Files]"  . "C:/Program Files")
+       '("  C:/"            . "C:/")
+       '("dev"              . "C:/Documents and Settings/Owner/My Documents/dev")
+       '("github"              . "C:/usr/local/github")
+       (cons "[Windows]"    (get-windows-directory))
+       (cons "[System]"     (get-system-directory))
+       (cons "[Desktop]"    (map-backslash-to-slash
+                             (get-special-folder-location :desktop)))
+       (cons "[Temp]" (or (map-backslash-to-slash (si:getenv "TEMP"))
+                          (map-backslash-to-slash (si:getenv "TMP"))
+                          "D:/User/s5087/Temp"))
+      )
+)
+;;パスマスクの設定
+(setq *filer-path-masks*
+  '(("All Files" "*")
+    ("Archives" "*.lzh" "*.zip" "*.arc" "*.gz" "*.bz2" "*.tar" "*.taz" "*.tgz")
+    ("Backup Files" "*~" "*.bak")
+    ("C/C++ Files" "*.c" "*.h" "*.cpp" "*.cxx" "*.cc" "*.inl")
+    ("Compiled Lisp Files" "*.lc" "*.elc")
+    ("Documents" "*.doc" "*.txt" "*.man" "*readme*" "*.jis" "*.euc")
+    ("Execute Files" "*.exe" "*.com" "*.bat" "*.pif")
+    ("Lisp Files" "*.l" "*.el" "*.lsp" "*.lisp")
+    ("Save Files" "#*#")
+   ))
+;;-------------------------------------------------------------------------
+
+;;リードマクロ定義
+
+;;正規表現リーダ
+(defun regexp-reader (stream char param)
+  (let* (buf
+	 after-end-delimiter
+	 (case-fold-p nil)
+	 (delimiter (read-char stream))
+	 (delimiter-end (cond ((char= delimiter #\<) #\>)
+			      (t delimiter))))
+    (do ((c (read-char stream) (read-char stream))
+	 (prev nil c))
+	((char= c delimiter-end))
+      (when (char= c #\\)
+	(when (char= (peek-char nil stream nil) delimiter)
+	  (setf c delimiter)
+	  (read-char stream)))
+      (setf buf (cons c buf)))
+    (if (setf after-end-delimiter (read-char stream nil))
+	(cond ((char= after-end-delimiter #\i)
+	       (setf case-fold-p t))
+	      (t
+	       (unread-char after-end-delimiter stream))))
+    (compile-regexp (concatenate 'string (nreverse buf)) case-fold-p)
+    ))
+(set-dispatch-macro-character #\# #\~ #'regexp-reader)
